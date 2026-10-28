@@ -1,0 +1,6 @@
+#!/bin/sh
+set -eu
+
+app_dir=$(CDPATH= cd -- "$(dirname -- "$(readlink -f -- "$0")")" && pwd)
+cd -- "$app_dir/lib/thinkrail/bin"
+exec ./launcher "$@"

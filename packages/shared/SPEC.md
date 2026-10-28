@@ -106,7 +106,9 @@ bundled into `apps/web`. Exposed through explicit subpath exports, not a barrel.
   overwrites this module in its throwaway checkout before building either artifact family so CLI
   `--version`, desktop package metadata, analytics, and `server.welcome.appVersion` cannot drift. It
   contains identity data plus the release-only public `posthogProjectKey` (empty in source, so
-  unstamped builds never report) and has no launcher dependency.
+  unstamped builds never report) and has no launcher dependency. Local Linux packaging uses this same
+  seam: it temporarily injects the selected version/channel before the native build, preserves commit
+  and analytics key, and restores the source afterward ([[submodule-desktop-linux-packaging]]).
 - **/windowsIdentity** — `windowsFileIdentity({ version, channel })`: what Windows shows for a ThinkRail
   executable. The product name, which also serves as the file description Task Manager displays, is
   `ThinkRail` on stable, `ThinkRail Nightly` on nightly and `ThinkRail Dev` on unstamped builds. The

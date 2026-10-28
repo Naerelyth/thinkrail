@@ -8,6 +8,9 @@
 		"dev": "electrobun dev",
 		"package:canary": "electrobun build --env=canary",
 		"package:stable": "electrobun build --env=stable",
+		"package:linux": "bash linux/package.sh all",
+		"package:rpm": "bash linux/package.sh rpm",
+		"package:appimage": "bash linux/package.sh appimage",
 		"typecheck": "electrobun prepare && tsc --noEmit",
 		"test": "bun test"
 	},
