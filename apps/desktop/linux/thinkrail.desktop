@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=@APP_NAME@
+Comment=The agentic IDE built around pi
+Exec=@PACKAGE_NAME@
+Icon=@PACKAGE_NAME@
+Terminal=false
+Categories=Development;IDE;
+StartupNotify=true

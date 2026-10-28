@@ -249,10 +249,12 @@ bun run --filter @thinkrail/cli dev  # browser launcher
 bun run build:binary                 # standalone CLI artifact
 bun run desktop:dev                  # package and open the Electrobun app
 bun run desktop:build                # package without opening it
+bun run desktop:package:linux        # Linux RPM + AppImage (additional tools required)
 ```
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the checks, the end-to-end suites, desktop packaging, and the
-repository layout.
+repository layout. See [Linux RPM and AppImage builds](apps/desktop/linux/README.md) for the additional
+packaging tools and commands.
 
 ## Contributing
 
