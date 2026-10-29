@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { Updater, Utils } from "electrobun/main";
+import { PATHS, Updater, Utils } from "electrobun/main";
 import { desktopError } from "../errorReporting";
 import type { DesktopDialogLabels } from "../nativeLabels";
 import {
@@ -8,6 +8,7 @@ import {
 	type NativeUpdaterDependency,
 } from "./controller";
 import { hasDesktopArtifactTestSeam, nativeUpdatesEnabled } from "./enablement";
+import { readManualUpdateMethod } from "./installation";
 import { createUpdateJournalStore, UPDATE_JOURNAL_FILE } from "./journal";
 import { createDesktopQuitCoordinator, type DesktopQuitCoordinator } from "./quitCoordinator";
 
@@ -72,16 +73,23 @@ export async function createElectrobunUpdateController(
 	options: ElectrobunUpdateControllerOptions,
 ): Promise<NativeUpdateController> {
 	const local = await Updater.getLocalInfo();
-	const enabled = nativeUpdatesEnabled({
-		isPackaged: options.isPackaged,
-		channel: local.channel,
-		baseUrl: local.baseUrl,
-		platform: options.platform,
-		arch: options.arch,
-		artifactTestSeam: hasDesktopArtifactTestSeam(process.env),
-	});
+	const manualUpdate =
+		options.isPackaged && options.platform === "linux"
+			? readManualUpdateMethod(PATHS.RESOURCES_FOLDER)
+			: undefined;
+	const enabled =
+		!manualUpdate &&
+		nativeUpdatesEnabled({
+			isPackaged: options.isPackaged,
+			channel: local.channel,
+			baseUrl: local.baseUrl,
+			platform: options.platform,
+			arch: options.arch,
+			artifactTestSeam: hasDesktopArtifactTestSeam(process.env),
+		});
 	return createNativeUpdateController({
 		enabled,
+		manualUpdate,
 		version: local.version || options.version,
 		channel: local.channel || options.channel,
 		updater: electrobunUpdater,

@@ -139,6 +139,7 @@ describe("unified update capability", () => {
 		expect(selectUpdateSource(bridge, hostNotice())).toBe("native");
 		expect(hasNativeUpdateSurface(null)).toBe(false);
 		expect(hasNativeUpdateSurface(nativeState(1, "disabled"))).toBe(false);
+		expect(hasNativeUpdateSurface(nativeState(1, "manual"))).toBe(true);
 		expect(hasNativeUpdateSurface(nativeState(2, "idle"))).toBe(true);
 	});
 

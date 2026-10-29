@@ -32,6 +32,7 @@ export interface NativeUpdateState {
 	revision: number;
 	status:
 		| "disabled"
+		| "manual"
 		| "idle"
 		| "checking"
 		| "available"
@@ -42,6 +43,7 @@ export interface NativeUpdateState {
 		| "error";
 	version: string;
 	channel: string;
+	manualUpdate?: "rpm" | "appimage" | "external";
 	availableVersion: string | null;
 	progress: number | null;
 	error: string | null;

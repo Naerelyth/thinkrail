@@ -65,6 +65,28 @@ function renderAffordance(updates: UpdatesController): string {
 	return renderToStaticMarkup(<UpdateReadyButton updates={updates} onOpen={() => {}} />);
 }
 
+test("manual installations explain upgrading without native actions or an error chip", () => {
+	for (const [manualUpdate, title] of [
+		["rpm", "Update using an RPM package"],
+		["appimage", "Replace the AppImage to update"],
+		["external", "Update from your original installation source"],
+	] as const) {
+		const updates = nativeUpdates(nativeState("manual", { manualUpdate }));
+		const markup = render(updates);
+		expect(markup).toContain(title);
+		expect(markup).toContain('data-testid="update-manual-guidance"');
+		expect(markup).toContain("Quit ThinkRail before replacing its files");
+		expect(markup).toContain("Version 0.1.0-nightly.45 · nightly channel");
+		expect(markup).not.toContain("Check for Updates");
+		expect(markup).not.toContain('data-testid="update-download"');
+		expect(markup).not.toContain("Install &amp; Restart");
+		expect(markup).not.toContain("Retry");
+		expect(markup).not.toContain('role="alert"');
+		expect(markup).not.toContain("checks for new releases in the background");
+		expect(renderAffordance(updates)).toBe("");
+	}
+});
+
 test("idle native updates describe checks without claiming automatic downloads", () => {
 	const markup = render(nativeUpdates(nativeState("idle")));
 	expect(markup).toContain("ThinkRail is up to date");

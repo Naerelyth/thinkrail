@@ -113,12 +113,15 @@ Download the `thinkrail-desktop-*` asset for your platform:
   sudo apt install libgtk-3-0 libwebkit2gtk-4.1-0 libayatana-appindicator3-1 librsvg2-2
   ```
 
-Packaged stable and nightly desktop builds check for updates in the background and offer them in
+Packaged stable and nightly desktop builds with native update support check in the background and offer updates in
 **Settings → Updates**: **Download** → **Preparing update** → **Install & Restart**. Nothing is applied until
 you choose **Install & Restart**. ThinkRail then shows the installation's progress and log, closes, and
 reopens on the new version. After the restart it tells you whether the update installed. If it didn't, it
 explains why and offers to retry. The updater appears only when the package carries a valid HTTPS feed
 identity; installations that predate that identity need one manual installation first.
+
+Local Linux RPM and AppImage installations show instructions for updating through a new package or
+replacing the AppImage instead of using the native installer. See the [Linux build guide](apps/desktop/linux/README.md).
 
 ### Command line
 

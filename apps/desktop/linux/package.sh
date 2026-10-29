@@ -193,6 +193,8 @@ desktop-file-validate "$payload/$package_name.desktop"
 artifacts=()
 
 if [[ $format != appimage ]]; then
+	printf 'rpm\n' > "$payload/.thinkrail-update-method"
+	chmod 644 -- "$payload/.thinkrail-update-method"
 	shopt -s globstar nullglob
 	libraries=("$payload/lib/thinkrail"/**/*.so "$payload/lib/thinkrail"/**/*.so.*)
 	private_provides=
@@ -223,6 +225,8 @@ console.log(capabilities.length ? "^(" + capabilities.map(escape).join("|") + ")
 fi
 
 if [[ $format != rpm ]]; then
+	printf 'appimage\n' > "$payload/.thinkrail-update-method"
+	chmod 644 -- "$payload/.thinkrail-update-method"
 	app_dir="$stage_dir/$app_name.AppDir"
 	mv -- "$payload" "$app_dir"
 	ARCH="$package_arch" VERSION="$version" "$appimagetool" --no-appstream \

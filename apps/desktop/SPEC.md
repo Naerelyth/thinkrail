@@ -553,6 +553,10 @@ metadata supplies a nonempty HTTPS updater base URL. That metadata is the sole f
 and standard artifact-test seams expose no updater. Installations stay on their packaged channel, while the UI
 calls Electrobun's canary channel **nightly**. Release qualification belongs to [[module-ci-release]].
 
+Local Linux RPM and AppImage wrappers declare manual update authority outside the native bundle.
+Their Settings surface explains package-manager upgrades or AppImage replacement, and their native
+controller never checks, downloads or applies Electrobun updates ([[submodule-desktop-updates]]).
+
 Electrobun calls and lifecycle state stay behind the desktop `updates` module; controls stay in the web client
 and graceful host shutdown stays in server. The frozen optional `__THINKRAIL_NATIVE_UPDATES__` preload bridge
 exposes typed state, check/download/install actions, and subscription without importing the desktop SDK into

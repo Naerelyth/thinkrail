@@ -83,7 +83,9 @@ default, narrow cross-ring guards, and the quit-confirmation rule both clients d
   or deployment that supplies it. A feature's wire shape is shared by browser, desktop, and future clients.
   Separate type-only native client capabilities describe an optional shell-local bridge, not host WS
   methods: `NativeUpdateState` and `NativeUpdateBridge` carry update presentation and explicit local
-  actions; `NativeWindowState` and `NativeWindowControlsBridge` carry the maximized/fullscreen snapshot and
+  actions, including a `manual` status and optional closed `manualUpdate` method (`rpm`, `appimage`, or
+  `external`) for installations updated outside the native installer; `NativeWindowState` and
+  `NativeWindowControlsBridge` carry the maximized/fullscreen snapshot and
   the minimize / toggle-maximize / close actions a frameless native window delegates to HTML controls;
   `NativeQuitHint`, `NativeCommand`, and `NativeShortcutsBridge` push the confirmed-quit hint and forwarded
   native menu commands, and offer `quit()` for a client that confirms the quit gesture itself;
