@@ -21,7 +21,8 @@ operation, while the controller keeps only the cross-operation sequencing needed
 - **Public surface:** Electrobun update-controller and quit-coordinator construction, plus
   `readPendingInstallVersion` for the startup splash, are exported only through `index.ts`. The pure
   controller, enablement policy, journal store, dependency shapes, and lifecycle implementation stay internal.
-- **Allowed deps:** the type-only native update contract from `@thinkrail/contracts`, `electrobun/main` in the
+- **Allowed deps:** Node filesystem/path for wrapper metadata and the journal, the type-only native
+  update contract from `@thinkrail/contracts`, `electrobun/main` in the
   SDK adapter, and injected clocks/randomness/lifecycle callbacks in the pure controller.
 - **Forbidden:** web or server imports; renderer-selected feed URLs; host wire methods; release publication,
   signing, or authentication; draft persistence; shutdown ownership; a second SDK subscription.
@@ -30,6 +31,13 @@ Only packaged supported stable/canary builds whose release metadata supplies a n
 enable the production adapter. Packaged metadata is the sole feed authority; renderer input and a duplicate
 application feed constant are forbidden. Development and ordinary artifact seams remain disabled. Tests inject an
 updater dependency into the controller rather than altering production feed selection.
+
+Linux RPM/AppImage wrappers declare their update method with `.thinkrail-update-method` at the wrapper
+root (three parents above Resources). The adapter recognizes it before enabling the updater and emits
+`manual` state with the closed `manualUpdate` method. A manual controller never subscribes to the SDK, reads
+its install journal, schedules checks, downloads or installs; even bridge requests remain inert. Missing
+markers retain the standard eligibility policy; unreadable/unknown markers fail closed to generic manual
+guidance. The marker is wrapper metadata, not a mutation of the native application or its release feed.
 
 Manual actions acknowledge immediately while work continues through state revisions. Automatic checks start
 after desktop readiness, repeat on a jittered six-hour cadence, and retry transient check failures within a

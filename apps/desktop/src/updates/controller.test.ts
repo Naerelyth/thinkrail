@@ -141,6 +141,38 @@ test("enables only supported packaged production identities and blocks artifact 
 	expect(hasDesktopArtifactTestSeam({})).toBe(false);
 });
 
+test("manual installations never schedule or invoke the native updater", async () => {
+	for (const manualUpdate of ["rpm", "appimage", "external"] as const) {
+		const updater = new FakeUpdater();
+		const unexpected = () => {
+			throw new Error("manual updates must remain inert");
+		};
+		const controller = createNativeUpdateController({
+			enabled: true,
+			manualUpdate,
+			version: "1.0.0",
+			channel: "stable",
+			updater,
+			restartToUpdate: unexpected,
+			schedule: unexpected,
+			journal: { read: unexpected, write: unexpected, clear: unexpected },
+		});
+		controller.start();
+		await controller.checkForUpdates();
+		await controller.downloadUpdate();
+		await controller.restartToUpdate();
+		const state = await controller.getState();
+		expect(state.status).toBe("manual");
+		expect(state.manualUpdate).toBe(manualUpdate);
+		expect(state.error).toBeNull();
+		expect(state.lastInstall).toBeNull();
+		expect(updater.checkCalls).toBe(0);
+		expect(updater.downloadCalls).toBe(0);
+		expect(updater.listener).toBeNull();
+		controller.dispose();
+	}
+});
+
 test("automatic and prompt checks coalesce, stop at available, and schedule the next check", async () => {
 	const updater = new FakeUpdater();
 	const pendingCheck = deferred<NativeUpdaterInfo>();

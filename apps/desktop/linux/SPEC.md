@@ -48,6 +48,10 @@ build, including version, channel, analytics configuration and updater metadata.
 - Preserve the expanded bundle and executable modes. Both formats use `AppRun`, which resolves its
   own symlink and enters the bundle's `bin/` before invoking the native launcher: Electrobun's early
   metadata reads require that cwd. Desktop startup then leaves it under the existing runtime rule.
+- The wrapper root contains `.thinkrail-update-method`: `rpm` for RPM payloads and `appimage` for
+  AppImage payloads. This marker stays outside the native application bundle. Native update authority
+  reads it relative to the Resources folder and exposes manual upgrade guidance, without invoking
+  Electrobun's updater against a system-managed or portable installation.
 - Stable uses `thinkrail-desktop`; canary uses `thinkrail-desktop-nightly`; dev uses
   `thinkrail-desktop-dev`. Separate install paths, commands, desktop entries and icons let channels
   coexist without replacing the browser CLI's `thinkrail` command.

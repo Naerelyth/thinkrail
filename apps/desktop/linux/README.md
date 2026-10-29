@@ -99,6 +99,10 @@ bun run desktop:package:appimage --version=1.2.3 --skip-build
 
 ## 安装与手动验证
 
+RPM/AppImage 安装后的「软件更新」会直接显示对应的手动升级指引，不会调用原生安装器或显示
+失败后的重试按钮。请从自己的构建来源获取或重新构建新版本：RPM 使用系统软件安装器升级，
+AppImage 替换旧文件；替换前退出 ThinkRail，升级完成后重新启动。
+
 将产物及其 `.sha256` 文件一起复制到目标机器，在产物所在目录校验后安装：
 
 ```bash

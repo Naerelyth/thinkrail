@@ -81,6 +81,7 @@ export interface NativeUpdaterDependency {
 
 export interface NativeUpdateControllerDependencies {
 	enabled: boolean;
+	manualUpdate?: NativeUpdateState["manualUpdate"];
 	version: string;
 	channel: string;
 	updater: NativeUpdaterDependency;
@@ -127,15 +128,17 @@ function progressFrom(entry: NativeUpdaterStatusEntry): number | null {
 export function createNativeUpdateController(
 	dependencies: NativeUpdateControllerDependencies,
 ): NativeUpdateController {
+	const enabled = dependencies.enabled && !dependencies.manualUpdate;
 	const schedule = dependencies.schedule ?? defaultSchedule;
 	const random = dependencies.random ?? Math.random;
 	const now = dependencies.now ?? Date.now;
-	const journal = dependencies.enabled ? dependencies.journal : undefined;
+	const journal = enabled ? dependencies.journal : undefined;
 	const saved = journal?.read() ?? null;
 	const listeners = new Set<(state: NativeUpdateState) => void>();
 	let state: Readonly<NativeUpdateState> = Object.freeze({
 		revision: 0,
-		status: dependencies.enabled ? "idle" : "disabled",
+		status: dependencies.manualUpdate ? "manual" : enabled ? "idle" : "disabled",
+		...(dependencies.manualUpdate ? { manualUpdate: dependencies.manualUpdate } : {}),
 		version: dependencies.version,
 		channel: dependencies.channel,
 		availableVersion: null,
@@ -429,7 +432,7 @@ export function createNativeUpdateController(
 	};
 
 	function launchCheck(): boolean {
-		if (!dependencies.enabled || disposed || activeCheck || activeDownload || installAttempt) {
+		if (!enabled || disposed || activeCheck || activeDownload || installAttempt) {
 			return false;
 		}
 		const token: ActiveCheck = {};
@@ -444,7 +447,7 @@ export function createNativeUpdateController(
 	}
 
 	const launchDownload = (): boolean => {
-		if (!dependencies.enabled || disposed || activeCheck || activeDownload || installAttempt) {
+		if (!enabled || disposed || activeCheck || activeDownload || installAttempt) {
 			return false;
 		}
 		const version = state.availableVersion;
@@ -546,13 +549,13 @@ export function createNativeUpdateController(
 	};
 
 	const handleStatus = (entry: NativeUpdaterStatusEntry): void => {
-		if (!dependencies.enabled || disposed) return;
+		if (!enabled || disposed) return;
 		if (activeDownload && handleDownloadStatus(activeDownload, entry)) return;
 		if (installAttempt) handleInstallStatus(entry);
 		else handleReconciliation(entry);
 	};
 
-	if (dependencies.enabled) dependencies.updater.onStatusChange(handleStatus);
+	if (enabled) dependencies.updater.onStatusChange(handleStatus);
 	if (pendingJournal) {
 		const unresolved = pendingJournal;
 		cancelResultFallback = schedule(INSTALL_RESULT_GRACE_MS, () => {
@@ -572,7 +575,7 @@ export function createNativeUpdateController(
 	return {
 		getState: async () => ({ ...state }),
 		checkForUpdates: async () => {
-			if (!dependencies.enabled || disposed) return;
+			if (!enabled || disposed) return;
 			retryIndex = 0;
 			if (activeCheck) {
 				clearScheduled();
@@ -588,7 +591,7 @@ export function createNativeUpdateController(
 		},
 		restartToUpdate: async () => {
 			if (
-				!dependencies.enabled ||
+				!enabled ||
 				disposed ||
 				installAttempt ||
 				activeCheck ||
@@ -666,7 +669,7 @@ export function createNativeUpdateController(
 			return () => listeners.delete(listener);
 		},
 		start: () => {
-			if (!dependencies.enabled || started || disposed) return;
+			if (!enabled || started || disposed) return;
 			started = true;
 			scheduleCheck(0);
 		},
@@ -677,7 +680,7 @@ export function createNativeUpdateController(
 			cancelResultFallback?.();
 			cancelResultFallback = undefined;
 			listeners.clear();
-			if (dependencies.enabled) dependencies.updater.onStatusChange(null);
+			if (enabled) dependencies.updater.onStatusChange(null);
 		},
 	};
 }

@@ -32,6 +32,12 @@ available release; transfer progress becomes a distinct **Preparing update** pha
 **Install & Restart**. Closing Settings is the deferral action. Disabled/source native state exposes no section.
 The UI calls the packaged `canary` identity **nightly** without changing feed selection.
 
+Native `manual` state remains visible in Settings as neutral installation-method guidance with current
+version/channel. RPM users obtain or rebuild the next RPM and upgrade through their system software
+installer; AppImage users replace the file from the original source. Both then restart ThinkRail.
+Manual state offers no check/download/install/retry controls and no attention chip. The renderer uses
+the native `manualUpdate` method, never platform or launcher detection, and executes no package command.
+
 The optional host snapshot arrives through the versioned wire and is synchronized in the store. It remains
 visible through a temporary disconnect and the next welcome replaces or clears it. Current hosts expose
 available/running/succeeded/failed state and one **Run Update** action; the action sends an empty version-gated

@@ -20,6 +20,23 @@ function nativeStatusCopy(
 	state: NativeUpdateState | null,
 ): { title: string; detail: string } {
 	switch (state?.status) {
+		case "manual":
+			if (state.manualUpdate === "rpm") {
+				return {
+					title: t("updates.manual.rpm.title"),
+					detail: t("updates.manual.rpm.detail"),
+				};
+			}
+			if (state.manualUpdate === "appimage") {
+				return {
+					title: t("updates.manual.appimage.title"),
+					detail: t("updates.manual.appimage.detail"),
+				};
+			}
+			return {
+				title: t("updates.manual.external.title"),
+				detail: t("updates.manual.external.detail"),
+			};
 		case "disabled":
 			return {
 				title: t("updates.native.disabled.title"),
@@ -123,6 +140,7 @@ export function UpdateSettings({ updates }: UpdateSettingsProps) {
 	const nativeRequestError = updates.source === "native" ? updates.requestError : null;
 	const hostRequestFailed = updates.source === "host" && updates.requestFailed;
 	const nativeStatus = nativeState?.status ?? "loading";
+	const manual = nativeStatus === "manual";
 	const hostStatus = hostNotice?.status;
 	const error = nativeRequestError?.message ?? nativeState?.error ?? null;
 	const lastInstall = nativeState?.lastInstall ?? null;
@@ -188,7 +206,9 @@ export function UpdateSettings({ updates }: UpdateSettingsProps) {
 				<h3 className="tr-title-section text-text-default">{t("updates.settings.title")}</h3>
 				<p className="text-text-muted tr-text-metadata">
 					{updates.source === "native"
-						? t("updates.settings.nativeDescription")
+						? manual
+							? t("updates.manual.description")
+							: t("updates.settings.nativeDescription")
 						: t("updates.settings.hostDescription")}
 				</p>
 			</div>
@@ -221,6 +241,12 @@ export function UpdateSettings({ updates }: UpdateSettingsProps) {
 						/>
 						<span className="text-text-muted tr-text-metadata">{progressLabel}</span>
 					</div>
+				) : null}
+
+				{manual ? (
+					<p data-testid="update-manual-guidance" className="text-text-muted tr-text-ui">
+						{t("updates.manual.restart")}
+					</p>
 				) : null}
 
 				{error ? (
@@ -278,7 +304,7 @@ export function UpdateSettings({ updates }: UpdateSettingsProps) {
 				</div>
 			</div>
 
-			{updates.source === "native" ? (
+			{updates.source === "native" && !manual ? (
 				<div className="flex flex-wrap justify-end gap-8">
 					{updates.state.status === "idle" || checking ? (
 						<Button
@@ -326,7 +352,7 @@ export function UpdateSettings({ updates }: UpdateSettingsProps) {
 						</Button>
 					) : null}
 				</div>
-			) : updates.canRun && (hostAvailable || hostFailed) ? (
+			) : updates.source === "host" && updates.canRun && (hostAvailable || hostFailed) ? (
 				<div className="flex flex-wrap justify-end gap-8">
 					<Button
 						variant={hostFailed ? "outline" : "primary"}

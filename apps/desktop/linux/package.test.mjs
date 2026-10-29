@@ -267,6 +267,19 @@ for (const environment of ["stable", "canary"]) {
 				assert.equal(readFileSync(f.env.TEST_BUILD_LOG, "utf8"), `run\npackage:${environment}\n`);
 				assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
 				assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
+				assert.equal(
+					readFileSync(join(f.env.TEST_APPDIR, ".thinkrail-update-method"), "utf8"),
+					"appimage\n",
+				);
+				assert.equal(
+					readFileSync(join(f.env.TEST_RPMDIR, "payload/.thinkrail-update-method"), "utf8"),
+					"rpm\n",
+				);
+				assert.equal(
+					statSync(join(f.env.TEST_RPMDIR, "payload/.thinkrail-update-method")).mode & 0o777,
+					0o644,
+				);
+				assert.equal(existsSync(join(f.bundle, ".thinkrail-update-method")), false);
 				assert.deepEqual(readFileSync(f.archive), archiveBefore);
 				const name = environment === "stable" ? "thinkrail-desktop" : "thinkrail-desktop-nightly";
 				const rpm = `${name}-1.2.3-1.${arch === "x64" ? "x86_64" : "aarch64"}.rpm`;

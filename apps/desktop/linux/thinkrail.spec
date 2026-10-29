@@ -31,7 +31,7 @@ workspaces, conversations, terminals, editors and living project specs.
 
 %install
 mkdir -p "%{buildroot}/opt/%{name}" "%{buildroot}%{_bindir}"
-cp -a AppRun lib "%{buildroot}/opt/%{name}/"
+cp -a AppRun .thinkrail-update-method lib "%{buildroot}/opt/%{name}/"
 ln -s "/opt/%{name}/AppRun" "%{buildroot}%{_bindir}/%{name}"
 install -Dm644 "%{name}.desktop" "%{buildroot}%{_datadir}/applications/%{name}.desktop"
 install -Dm644 "%{name}.png" "%{buildroot}%{_datadir}/pixmaps/%{name}.png"
