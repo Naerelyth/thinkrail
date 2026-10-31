@@ -32,8 +32,9 @@ enable the production adapter. Packaged metadata is the sole feed authority; ren
 application feed constant are forbidden. Development and ordinary artifact seams remain disabled. Tests inject an
 updater dependency into the controller rather than altering production feed selection.
 
-Linux RPM/AppImage wrappers declare their update method with `.thinkrail-update-method` at the wrapper
-root (three parents above Resources). The adapter recognizes it before enabling the updater and emits
+Linux RPM/AppImage wrappers, including dev-channel wrappers, declare their update method with
+`.thinkrail-update-method` at the wrapper root (three parents above Resources). The adapter recognizes it
+independently of Electrobun's packaged flag before enabling the updater and emits
 `manual` state with the closed `manualUpdate` method. A manual controller never subscribes to the SDK, reads
 its install journal, schedules checks, downloads or installs; even bridge requests remain inert. Missing
 markers retain the standard eligibility policy; unreadable/unknown markers fail closed to generic manual

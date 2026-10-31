@@ -28,7 +28,8 @@ build, including version, channel, analytics configuration and updater metadata.
   conflicting selectors fail. `--skip-build` consumes that exact bundle, failing on missing inputs
   instead of selecting a different channel.
 - Default the version to `packages/shared/src/version.ts`; `--version=X.Y.Z` optionally overrides it,
-  accepting SemVer prerelease/build suffixes. Empty or invalid versions fail before building. Before
+  accepting SemVer prerelease/build suffixes. Empty or invalid versions fail before building; explicit
+  version values remain data even when they resemble runtime command-line options. Before
   the native build, temporarily replace only that module's `version` and `channel` values so runtime
   identity, Electrobun metadata and both outer package formats agree. Preserve `commit`,
   `posthogProjectKey` and all other source content. Restore the original file after success, failure

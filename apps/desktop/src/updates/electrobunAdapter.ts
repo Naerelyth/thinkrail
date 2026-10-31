@@ -74,9 +74,7 @@ export async function createElectrobunUpdateController(
 ): Promise<NativeUpdateController> {
 	const local = await Updater.getLocalInfo();
 	const manualUpdate =
-		options.isPackaged && options.platform === "linux"
-			? readManualUpdateMethod(PATHS.RESOURCES_FOLDER)
-			: undefined;
+		options.platform === "linux" ? readManualUpdateMethod(PATHS.RESOURCES_FOLDER) : undefined;
 	const enabled =
 		!manualUpdate &&
 		nativeUpdatesEnabled({

@@ -2,9 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type { NativeUpdateState } from "@thinkrail/contracts";
 
-export function readManualUpdateMethod(
-	resourcesFolder: string,
-): NativeUpdateState["manualUpdate"] {
+export function readManualUpdateMethod(resourcesFolder: string): NativeUpdateState["manualUpdate"] {
 	let method: string;
 	try {
 		method = readFileSync(

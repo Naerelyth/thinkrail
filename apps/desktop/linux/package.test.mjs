@@ -26,7 +26,8 @@ const manifest = JSON.parse(readFileSync(join(repoRoot, "package.json"), "utf8")
 const archiveTestsUnavailable =
 	process.platform !== "linux" ||
 	["tar", "zstd"].some((tool) => spawnSync(tool, ["--version"]).status !== 0);
-const rpmMacrosUnavailable = archiveTestsUnavailable || spawnSync("rpm", ["--version"]).status !== 0;
+const rpmMacrosUnavailable =
+	archiveTestsUnavailable || spawnSync("rpm", ["--version"]).status !== 0;
 const roots = [];
 
 afterEach(() => {
@@ -71,7 +72,9 @@ function fixture(environment = "stable", arch = "x64") {
 	executable(join(root, "node_modules/.bin/electrobun"), "#!/bin/sh\nexit 0\n");
 	const bundleName = environment === "stable" ? "ThinkRail" : `ThinkRail-${environment}`;
 	const bundle = join(
-		environment === "dev" ? join(desktop, "build", `dev-linux-${arch}`) : join(root, "archive input"),
+		environment === "dev"
+			? join(desktop, "build", `dev-linux-${arch}`)
+			: join(root, "archive input"),
 		bundleName,
 	);
 	executable(join(bundle, "bin/launcher"), "#!/bin/sh\nexit 0\n");
@@ -105,13 +108,13 @@ function fixture(environment = "stable", arch = "x64") {
 	const libraryCapabilities = join(root, "private-capabilities.txt");
 	writeFileSync(
 		libraryCapabilities,
-		[
+		`${[
 			"libasar.so()(64bit)",
 			"libasar.so(ASAR_1.0)(64bit)",
 			"libNativeWrapper.so()(64bit)",
 			"libNativeWrapper.so()(64bit)",
 			"libspecial++.so.1()(64bit)",
-		].join("\n") + "\n",
+		].join("\n")}\n`,
 	);
 	executable(join(tools, "rpm"), '#!/bin/sh\nprintf "%s\\n" "$TEST_RPM_CONFIG"\n');
 	executable(
@@ -254,130 +257,125 @@ function assertPayload(f, path) {
 
 for (const environment of ["stable", "canary"]) {
 	for (const arch of ["x64", "arm64"]) {
-		test(
-			`wraps archive-only ${environment} ${arch} output after a simulated native build`,
-			{ skip: archiveTestsUnavailable },
-			() => {
-				const f = fixture(environment, arch);
-				const expanded = join(f.desktop, "build", `${environment}-linux-${arch}`, f.bundleName);
-				assert.equal(existsSync(expanded), false);
-				const archiveBefore = readFileSync(f.archive);
-				const result = run(f, "all", "--version=1.2.3", `--env=${environment}`);
-				assert.equal(result.status, 0, result.stderr);
-				assert.equal(readFileSync(f.env.TEST_BUILD_LOG, "utf8"), `run\npackage:${environment}\n`);
-				assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
-				assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
-				assert.equal(
-					readFileSync(join(f.env.TEST_APPDIR, ".thinkrail-update-method"), "utf8"),
-					"appimage\n",
-				);
-				assert.equal(
-					readFileSync(join(f.env.TEST_RPMDIR, "payload/.thinkrail-update-method"), "utf8"),
-					"rpm\n",
-				);
-				assert.equal(
-					statSync(join(f.env.TEST_RPMDIR, "payload/.thinkrail-update-method")).mode & 0o777,
-					0o644,
-				);
-				assert.equal(existsSync(join(f.bundle, ".thinkrail-update-method")), false);
-				assert.deepEqual(readFileSync(f.archive), archiveBefore);
-				const name = environment === "stable" ? "thinkrail-desktop" : "thinkrail-desktop-nightly";
-				const rpm = `${name}-1.2.3-1.${arch === "x64" ? "x86_64" : "aarch64"}.rpm`;
-				const output = join(f.desktop, "artifacts/linux");
-				const digest = createHash("sha256").update(readFileSync(join(output, rpm))).digest("hex");
-				assert.equal(readFileSync(join(output, `${rpm}.sha256`), "utf8"), `${digest}  ${rpm}\n`);
-			},
-		);
+		test(`wraps archive-only ${environment} ${arch} output after a simulated native build`, {
+			skip: archiveTestsUnavailable,
+		}, () => {
+			const f = fixture(environment, arch);
+			const expanded = join(f.desktop, "build", `${environment}-linux-${arch}`, f.bundleName);
+			assert.equal(existsSync(expanded), false);
+			const archiveBefore = readFileSync(f.archive);
+			const result = run(f, "all", "--version=1.2.3", `--env=${environment}`);
+			assert.equal(result.status, 0, result.stderr);
+			assert.equal(readFileSync(f.env.TEST_BUILD_LOG, "utf8"), `run\npackage:${environment}\n`);
+			assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
+			assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
+			assert.equal(
+				readFileSync(join(f.env.TEST_APPDIR, ".thinkrail-update-method"), "utf8"),
+				"appimage\n",
+			);
+			assert.equal(
+				readFileSync(join(f.env.TEST_RPMDIR, "payload/.thinkrail-update-method"), "utf8"),
+				"rpm\n",
+			);
+			assert.equal(
+				statSync(join(f.env.TEST_RPMDIR, "payload/.thinkrail-update-method")).mode & 0o777,
+				0o644,
+			);
+			assert.equal(existsSync(join(f.bundle, ".thinkrail-update-method")), false);
+			assert.deepEqual(readFileSync(f.archive), archiveBefore);
+			const name = environment === "stable" ? "thinkrail-desktop" : "thinkrail-desktop-nightly";
+			const rpm = `${name}-1.2.3-1.${arch === "x64" ? "x86_64" : "aarch64"}.rpm`;
+			const output = join(f.desktop, "artifacts/linux");
+			const digest = createHash("sha256")
+				.update(readFileSync(join(output, rpm)))
+				.digest("hex");
+			assert.equal(readFileSync(join(output, `${rpm}.sha256`), "utf8"), `${digest}  ${rpm}\n`);
+		});
 	}
 }
 
-test(
-	"reuses the exact stable archive despite a stale expanded release tree",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		const stale = join(f.desktop, "build/stable-linux-x64/ThinkRail");
-		cpSync(f.bundle, stale, { recursive: true });
-		writeFileSync(join(stale, "Resources/version.json"), '{"version":"9.9.9","channel":"stable"}');
-		const result = run(f, "appimage", "--version=1.2.3", "--skip-build");
-		assert.equal(result.status, 0, result.stderr);
-		assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
-		assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
-	},
-);
+test("reuses the exact stable archive despite a stale expanded release tree", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	const stale = join(f.desktop, "build/stable-linux-x64/ThinkRail");
+	cpSync(f.bundle, stale, { recursive: true });
+	writeFileSync(join(stale, "Resources/version.json"), '{"version":"9.9.9","channel":"stable"}');
+	const result = run(f, "appimage", "--version=1.2.3", "--skip-build");
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
+	assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
+});
 
-test(
-	"checks archive-only inputs without extracting or packaging",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		const result = run(f, "rpm", "--version=1.2.3", "--skip-build", "--check");
-		assert.equal(result.status, 0, result.stderr);
-		assert.equal(existsSync(join(f.desktop, "build")), false);
-		assert.equal(existsSync(join(f.desktop, "artifacts/linux")), false);
-	},
-);
+test("checks archive-only inputs without extracting or packaging", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	const result = run(f, "rpm", "--version=1.2.3", "--skip-build", "--check");
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(existsSync(join(f.desktop, "build")), false);
+	assert.equal(existsSync(join(f.desktop, "artifacts/linux")), false);
+});
 
-test(
-	"rejects a missing exact archive instead of choosing a sibling target or expanded tree",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		cpSync(f.archive, join(dirname(f.archive), "stable-linux-arm64-ThinkRail.tar.zst"));
-		cpSync(f.bundle, join(f.desktop, "build/stable-linux-x64/ThinkRail"), { recursive: true });
-		rmSync(f.archive);
-		const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
-		assert.notEqual(result.status, 0);
-		assert.ok(result.stderr.includes(f.archive), result.stderr);
-		assert.equal(existsSync(f.env.TEST_RPMDIR), false);
-	},
-);
+test("rejects a missing exact archive instead of choosing a sibling target or expanded tree", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	cpSync(f.archive, join(dirname(f.archive), "stable-linux-arm64-ThinkRail.tar.zst"));
+	cpSync(f.bundle, join(f.desktop, "build/stable-linux-x64/ThinkRail"), { recursive: true });
+	rmSync(f.archive);
+	const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
+	assert.notEqual(result.status, 0);
+	assert.ok(result.stderr.includes(f.archive), result.stderr);
+	assert.equal(existsSync(f.env.TEST_RPMDIR), false);
+});
 
-test(
-	"rejects corrupt release archives and removes temporary extraction",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		writeFileSync(f.archive, "not a zstd archive");
-		const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
-		assert.notEqual(result.status, 0);
-		assert.equal(existsSync(f.env.TEST_RPMDIR), false);
-		assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
-		assert.deepEqual(readdirSync(join(f.desktop, "build")), []);
-	},
-);
+test("rejects corrupt release archives and removes temporary extraction", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	writeFileSync(f.archive, "not a zstd archive");
+	const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
+	assert.notEqual(result.status, 0);
+	assert.equal(existsSync(f.env.TEST_RPMDIR), false);
+	assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
+	assert.deepEqual(readdirSync(join(f.desktop, "build")), []);
+});
 
-test(
-	"rejects an archive with a different application root",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		const parent = dirname(f.bundle);
-		cpSync(f.bundle, join(parent, "OtherApp"), { recursive: true });
-		const packed = spawnSync("tar", ["--zstd", "-cf", f.archive, "-C", parent, "OtherApp"]);
-		assert.equal(packed.status, 0, packed.stderr?.toString());
-		const result = run(f, "appimage", "--version=1.2.3", "--skip-build");
-		assert.notEqual(result.status, 0);
-		assert.equal(existsSync(f.env.TEST_APPDIR), false);
-		assert.deepEqual(readdirSync(join(f.desktop, "build")), []);
-	},
-);
+test("rejects an archive with a different application root", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	const parent = dirname(f.bundle);
+	cpSync(f.bundle, join(parent, "OtherApp"), { recursive: true });
+	const packed = spawnSync("tar", ["--zstd", "-cf", f.archive, "-C", parent, "OtherApp"]);
+	assert.equal(packed.status, 0, packed.stderr?.toString());
+	const result = run(f, "appimage", "--version=1.2.3", "--skip-build");
+	assert.notEqual(result.status, 0);
+	assert.equal(existsSync(f.env.TEST_APPDIR), false);
+	assert.deepEqual(readdirSync(join(f.desktop, "build")), []);
+});
 
-test(
-	"rejects an archive with an incomplete application payload",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		rmSync(join(f.bundle, "bin/bun"));
-		const packed = spawnSync("tar", ["--zstd", "-cf", f.archive, "-C", dirname(f.bundle), f.bundleName]);
-		assert.equal(packed.status, 0, packed.stderr?.toString());
-		const result = run(f, "appimage", "--version=1.2.3", "--skip-build");
-		assert.notEqual(result.status, 0);
-		assert.ok(result.stderr.includes("application payload is incomplete"), result.stderr);
-		assert.equal(existsSync(f.env.TEST_APPDIR), false);
-		assert.deepEqual(readdirSync(join(f.desktop, "build")), []);
-	},
-);
+test("rejects an archive with an incomplete application payload", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	rmSync(join(f.bundle, "bin/bun"));
+	const packed = spawnSync("tar", [
+		"--zstd",
+		"-cf",
+		f.archive,
+		"-C",
+		dirname(f.bundle),
+		f.bundleName,
+	]);
+	assert.equal(packed.status, 0, packed.stderr?.toString());
+	const result = run(f, "appimage", "--version=1.2.3", "--skip-build");
+	assert.notEqual(result.status, 0);
+	assert.ok(result.stderr.includes("application payload is incomplete"), result.stderr);
+	assert.equal(existsSync(f.env.TEST_APPDIR), false);
+	assert.deepEqual(readdirSync(join(f.desktop, "build")), []);
+});
 
 test("continues to wrap the expanded dev bundle", { skip: process.platform !== "linux" }, () => {
 	const f = fixture("dev");
@@ -386,56 +384,59 @@ test("continues to wrap the expanded dev bundle", { skip: process.platform !== "
 	assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
 });
 
-test(
-	"injects the AppImage version before building without consulting Git",
-	{ skip: process.platform !== "linux" },
-	() => {
-		const f = fixture("dev");
-		const sourceBefore = readFileSync(f.versionFile, "utf8");
-		f.env.TEST_GIT_LOG = join(f.root, "git.log");
-		executable(
-			join(f.root, "tools/git"),
-			'#!/bin/sh\nprintf "Git was invoked\\n" > "$TEST_GIT_LOG"\nexit 97\n',
-		);
-		const result = run(f, "appimage", "--version=2.4.6", "--channel=dev");
-		assert.equal(result.status, 0, result.stderr);
-		assert.ok(existsSync(join(f.desktop, "artifacts/linux/thinkrail-desktop-dev-2.4.6-x86_64.AppImage")));
-		assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
-		assert.equal(JSON.parse(readFileSync(join(f.bundle, "Resources/version.json"))).version, "2.4.6");
-		assert.equal(
-			readFileSync(f.env.TEST_BUILD_SOURCE, "utf8"),
-			sourceBefore.replace('version = "1.2.3"', 'version = "2.4.6"'),
-		);
-		assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
-		assert.equal(existsSync(f.env.TEST_RPMDEPS_LOG), false);
-		assert.equal(existsSync(f.env.TEST_GIT_LOG), false);
-		assert.equal(existsSync(join(f.root, ".git")), false);
-	},
-);
+test("injects the AppImage version before building without consulting Git", {
+	skip: process.platform !== "linux",
+}, () => {
+	const f = fixture("dev");
+	const sourceBefore = readFileSync(f.versionFile, "utf8");
+	f.env.TEST_GIT_LOG = join(f.root, "git.log");
+	executable(
+		join(f.root, "tools/git"),
+		'#!/bin/sh\nprintf "Git was invoked\\n" > "$TEST_GIT_LOG"\nexit 97\n',
+	);
+	const result = run(f, "appimage", "--version=2.4.6", "--channel=dev");
+	assert.equal(result.status, 0, result.stderr);
+	assert.ok(
+		existsSync(join(f.desktop, "artifacts/linux/thinkrail-desktop-dev-2.4.6-x86_64.AppImage")),
+	);
+	assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
+	assert.equal(JSON.parse(readFileSync(join(f.bundle, "Resources/version.json"))).version, "2.4.6");
+	assert.equal(
+		readFileSync(f.env.TEST_BUILD_SOURCE, "utf8"),
+		sourceBefore.replace('version = "1.2.3"', 'version = "2.4.6"'),
+	);
+	assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
+	assert.equal(existsSync(f.env.TEST_RPMDEPS_LOG), false);
+	assert.equal(existsSync(f.env.TEST_GIT_LOG), false);
+	assert.equal(existsSync(join(f.root, ".git")), false);
+});
 
-test(
-	"defaults to the shared source version for runtime metadata and both package formats",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		const source = readFileSync(f.versionFile, "utf8").replace('"1.2.3"', '"0.0.0-dev"');
-		writeFileSync(f.versionFile, source);
-		const result = run(f, "all");
-		assert.equal(result.status, 0, result.stderr);
-		const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
-		assert.equal(macros.app_version, "0.0.0~dev");
-		assert.ok(existsSync(join(f.desktop, "artifacts/linux/thinkrail-desktop-0.0.0-dev-x86_64.AppImage")));
-		assert.deepEqual(JSON.parse(readFileSync(join(f.bundle, "Resources/app/runtime/identity.json"))), {
+test("defaults to the shared source version for runtime metadata and both package formats", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	const source = readFileSync(f.versionFile, "utf8").replace('"1.2.3"', '"0.0.0-dev"');
+	writeFileSync(f.versionFile, source);
+	const result = run(f, "all");
+	assert.equal(result.status, 0, result.stderr);
+	const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
+	assert.equal(macros.app_version, "0.0.0~dev");
+	assert.ok(
+		existsSync(join(f.desktop, "artifacts/linux/thinkrail-desktop-0.0.0-dev-x86_64.AppImage")),
+	);
+	assert.deepEqual(
+		JSON.parse(readFileSync(join(f.bundle, "Resources/app/runtime/identity.json"))),
+		{
 			version: "0.0.0-dev",
 			channel: "stable",
 			commit: "fixture-commit",
 			posthogProjectKey: "fixture-key",
-		});
-		assert.equal(readFileSync(f.versionFile, "utf8"), source);
-		assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
-		assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
-	},
-);
+		},
+	);
+	assert.equal(readFileSync(f.versionFile, "utf8"), source);
+	assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
+	assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
+});
 
 test("rejects an empty explicit version", { skip: process.platform !== "linux" }, () => {
 	const f = fixture("dev");
@@ -446,178 +447,175 @@ test("rejects an empty explicit version", { skip: process.platform !== "linux" }
 	assert.equal(existsSync(f.env.TEST_APPDIR), false);
 });
 
-test(
-	"uses the explicit prerelease version for both package formats",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture("canary");
-		const sourceBefore = readFileSync(f.versionFile, "utf8");
-		const result = run(f, "all", "--version=2.3.4-nightly.8+fork.2", "--channel=nightly", "--env=canary");
-		assert.equal(result.status, 0, result.stderr);
-		const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
-		assert.equal(macros.app_version, "2.3.4~nightly.8+fork.2");
-		assert.ok(
-			existsSync(
-				join(f.desktop, "artifacts/linux/thinkrail-desktop-nightly-2.3.4-nightly.8+fork.2-x86_64.AppImage"),
+test("uses the explicit prerelease version for both package formats", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture("canary");
+	const sourceBefore = readFileSync(f.versionFile, "utf8");
+	const result = run(
+		f,
+		"all",
+		"--version=2.3.4-nightly.8+fork.2",
+		"--channel=nightly",
+		"--env=canary",
+	);
+	assert.equal(result.status, 0, result.stderr);
+	const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
+	assert.equal(macros.app_version, "2.3.4~nightly.8+fork.2");
+	assert.ok(
+		existsSync(
+			join(
+				f.desktop,
+				"artifacts/linux/thinkrail-desktop-nightly-2.3.4-nightly.8+fork.2-x86_64.AppImage",
 			),
-		);
-		assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
-		assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
-		assert.deepEqual(JSON.parse(readFileSync(join(f.bundle, "Resources/app/runtime/identity.json"))), {
+		),
+	);
+	assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
+	assertPayload(f, join(f.env.TEST_APPDIR, "lib/thinkrail"));
+	assert.deepEqual(
+		JSON.parse(readFileSync(join(f.bundle, "Resources/app/runtime/identity.json"))),
+		{
 			version: "2.3.4-nightly.8+fork.2",
 			channel: "nightly",
 			commit: "fixture-commit",
 			posthogProjectKey: "fixture-key",
-		});
-		assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
-	},
-);
+		},
+	);
+	assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
+});
 
-test(
-	"keeps build metadata separate from RPM prerelease ordering",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture("dev");
-		for (const [version, rpmVersion] of [
-			["1.2.3+fork-build.2", "1.2.3+fork.build.2"],
-			["1.2.3-nightly-test.8+fork-build.2", "1.2.3~nightly.test.8+fork.build.2"],
-		]) {
-			const result = run(f, "rpm", `--version=${version}`, "--env=dev");
-			assert.equal(result.status, 0, result.stderr);
-			const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
-			assert.equal(macros.app_version, rpmVersion);
-		}
-	},
-);
-
-test(
-	"rejects malformed explicit versions before starting a native build",
-	{ skip: process.platform !== "linux" },
-	() => {
-		const f = fixture("dev");
-		for (const version of [
-			"--version",
-			"--help",
-			"-v",
-			"--",
-			"v1.2.3",
-			"01.2.3",
-			"1.2.3-01",
-			"1.2",
-			"1.2.3 invalid",
-			"1.2.3\n",
-			"1.2.3%{?dist}",
-		]) {
-			const result = run(f, "appimage", `--version=${version}`, "--env=dev");
-			assert.notEqual(result.status, 0);
-			assert.ok(result.stderr.includes("version must be a SemVer version"), result.stderr);
-		}
-		assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
-		assert.equal(existsSync(f.env.TEST_APPDIR), false);
-	},
-);
-
-test(
-	"leaves source untouched during preflight with overrides",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture("canary");
-		const sourceBefore = readFileSync(f.versionFile, "utf8");
-		const result = run(f, "rpm", "--version=9.8.7", "--channel=nightly", "--check");
+test("keeps build metadata separate from RPM prerelease ordering", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture("dev");
+	for (const [version, rpmVersion] of [
+		["1.2.3+fork-build.2", "1.2.3+fork.build.2"],
+		["1.2.3-nightly-test.8+fork-build.2", "1.2.3~nightly.test.8+fork.build.2"],
+	]) {
+		const result = run(f, "rpm", `--version=${version}`, "--env=dev");
 		assert.equal(result.status, 0, result.stderr);
-		assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
-		assert.equal(existsSync(f.env.TEST_BUILD_SOURCE), false);
-		assert.equal(existsSync(join(f.desktop, "build")), false);
-	},
-);
+		const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
+		assert.equal(macros.app_version, rpmVersion);
+	}
+});
 
-test(
-	"restores source after native build failure or a handled signal",
-	{ skip: process.platform !== "linux" },
-	() => {
-		for (const signal of ["", "TERM"]) {
-			const f = fixture("dev");
-			const sourceBefore = readFileSync(f.versionFile, "utf8");
-			chmodSync(f.versionFile, 0o640);
-			f.env.TEST_BUILD_FAILURE = "17";
-			f.env.TEST_BUILD_SIGNAL = signal;
-			const result = run(f, "appimage", "--version=9.8.7", "--channel=dev");
-			assert.equal(result.status, signal ? 143 : 17, result.stderr);
-			assert.ok(readFileSync(f.env.TEST_BUILD_SOURCE, "utf8").includes('version = "9.8.7"'));
-			assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
-			assert.equal(statSync(f.versionFile).mode & 0o777, 0o640);
-			assert.equal(existsSync(f.env.TEST_APPDIR), false);
-		}
-	},
-);
-
-test(
-	"rejects conflicting or invalid channel selectors",
-	{ skip: process.platform !== "linux" },
-	() => {
-		const f = fixture("dev");
-		const sourceBefore = readFileSync(f.versionFile, "utf8");
-		for (const args of [
-			["--channel=nightly", "--env=stable"],
-			["--env=dev", "--channel=stable"],
-			["--channel=stable", "--channel=dev"],
-			["--channel=canary"],
-			["--channel="],
-		]) {
-			const result = run(f, "appimage", ...args);
-			assert.notEqual(result.status, 0);
-			assert.match(result.stderr, /conflicting channel\/environment selectors|unknown option/);
-		}
-		assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
-		assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
-	},
-);
-
-test(
-	"rejects an invalid source version before native build",
-	{ skip: process.platform !== "linux" },
-	() => {
-		const f = fixture("dev");
-		const invalid = readFileSync(f.versionFile, "utf8").replace('"1.2.3"', '"invalid"');
-		writeFileSync(f.versionFile, invalid);
-		const result = run(f, "appimage", "--channel=dev");
-		assert.notEqual(result.status, 0);
+test("rejects malformed explicit versions before starting a native build", {
+	skip: process.platform !== "linux",
+}, () => {
+	const f = fixture("dev");
+	for (const version of [
+		"--version",
+		"--help",
+		"-v",
+		"--",
+		"v1.2.3",
+		"01.2.3",
+		"1.2.3-01",
+		"1.2",
+		"1.2.3 invalid",
+		"1.2.3\n",
+		"1.2.3%{?dist}",
+	]) {
+		const result = run(f, "appimage", `--version=${version}`, "--env=dev");
+		assert.notEqual(result.status, 0, JSON.stringify(version));
 		assert.ok(result.stderr.includes("version must be a SemVer version"), result.stderr);
-		assert.equal(readFileSync(f.versionFile, "utf8"), invalid);
-		assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
-	},
-);
+	}
+	assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
+	assert.equal(existsSync(f.env.TEST_APPDIR), false);
+});
 
-test(
-	"rejects relabeling an existing bundle with a different version",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		const sourceBefore = readFileSync(f.versionFile, "utf8");
-		const archiveBefore = readFileSync(f.archive);
-		const result = run(f, "all", "--version=9.8.7", "--skip-build");
-		assert.notEqual(result.status, 0);
-		assert.ok(result.stderr.includes("bundle version does not match the requested version"), result.stderr);
-		assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
-		assert.deepEqual(readFileSync(f.archive), archiveBefore);
-		assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
-		assert.equal(existsSync(f.env.TEST_APPDIR), false);
-		assert.equal(existsSync(f.env.TEST_RPMDIR), false);
-	},
-);
+test("leaves source untouched during preflight with overrides", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture("canary");
+	const sourceBefore = readFileSync(f.versionFile, "utf8");
+	const result = run(f, "rpm", "--version=9.8.7", "--channel=nightly", "--check");
+	assert.equal(result.status, 0, result.stderr);
+	assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
+	assert.equal(existsSync(f.env.TEST_BUILD_SOURCE), false);
+	assert.equal(existsSync(join(f.desktop, "build")), false);
+});
 
-test(
-	"rejects an existing bundle with the wrong channel",
-	{ skip: process.platform !== "linux" },
-	() => {
+test("restores source after native build failure or a handled signal", {
+	skip: process.platform !== "linux",
+}, () => {
+	for (const signal of ["", "TERM"]) {
 		const f = fixture("dev");
-		writeFileSync(join(f.bundle, "Resources/version.json"), '{"version":"1.2.3","channel":"stable"}');
-		const result = run(f, "appimage", "--channel=dev", "--skip-build");
-		assert.notEqual(result.status, 0);
-		assert.ok(result.stderr.includes("bundle channel does not match --env"), result.stderr);
+		const sourceBefore = readFileSync(f.versionFile, "utf8");
+		chmodSync(f.versionFile, 0o640);
+		f.env.TEST_BUILD_FAILURE = "17";
+		f.env.TEST_BUILD_SIGNAL = signal;
+		const result = run(f, "appimage", "--version=9.8.7", "--channel=dev");
+		assert.equal(result.status, signal ? 143 : 17, result.stderr);
+		assert.ok(readFileSync(f.env.TEST_BUILD_SOURCE, "utf8").includes('version = "9.8.7"'));
+		assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
+		assert.equal(statSync(f.versionFile).mode & 0o777, 0o640);
 		assert.equal(existsSync(f.env.TEST_APPDIR), false);
-	},
-);
+	}
+});
+
+test("rejects conflicting or invalid channel selectors", {
+	skip: process.platform !== "linux",
+}, () => {
+	const f = fixture("dev");
+	const sourceBefore = readFileSync(f.versionFile, "utf8");
+	for (const args of [
+		["--channel=nightly", "--env=stable"],
+		["--env=dev", "--channel=stable"],
+		["--channel=stable", "--channel=dev"],
+		["--channel=canary"],
+		["--channel="],
+	]) {
+		const result = run(f, "appimage", ...args);
+		assert.notEqual(result.status, 0);
+		assert.match(result.stderr, /conflicting channel\/environment selectors|unknown option/);
+	}
+	assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
+	assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
+});
+
+test("rejects an invalid source version before native build", {
+	skip: process.platform !== "linux",
+}, () => {
+	const f = fixture("dev");
+	const invalid = readFileSync(f.versionFile, "utf8").replace('"1.2.3"', '"invalid"');
+	writeFileSync(f.versionFile, invalid);
+	const result = run(f, "appimage", "--channel=dev");
+	assert.notEqual(result.status, 0);
+	assert.ok(result.stderr.includes("version must be a SemVer version"), result.stderr);
+	assert.equal(readFileSync(f.versionFile, "utf8"), invalid);
+	assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
+});
+
+test("rejects relabeling an existing bundle with a different version", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	const sourceBefore = readFileSync(f.versionFile, "utf8");
+	const archiveBefore = readFileSync(f.archive);
+	const result = run(f, "all", "--version=9.8.7", "--skip-build");
+	assert.notEqual(result.status, 0);
+	assert.ok(
+		result.stderr.includes("bundle version does not match the requested version"),
+		result.stderr,
+	);
+	assert.equal(readFileSync(f.versionFile, "utf8"), sourceBefore);
+	assert.deepEqual(readFileSync(f.archive), archiveBefore);
+	assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
+	assert.equal(existsSync(f.env.TEST_APPDIR), false);
+	assert.equal(existsSync(f.env.TEST_RPMDIR), false);
+});
+
+test("rejects an existing bundle with the wrong channel", {
+	skip: process.platform !== "linux",
+}, () => {
+	const f = fixture("dev");
+	writeFileSync(join(f.bundle, "Resources/version.json"), '{"version":"1.2.3","channel":"stable"}');
+	const result = run(f, "appimage", "--channel=dev", "--skip-build");
+	assert.notEqual(result.status, 0);
+	assert.ok(result.stderr.includes("bundle channel does not match --env"), result.stderr);
+	assert.equal(existsSync(f.env.TEST_APPDIR), false);
+});
 
 test("shows help without requiring a version", { skip: process.platform !== "linux" }, () => {
 	const f = fixture("dev");
@@ -627,87 +625,86 @@ test("shows help without requiring a version", { skip: process.platform !== "lin
 	assert.equal(existsSync(f.env.TEST_BUILD_LOG), false);
 });
 
-test(
-	"filters precisely the capabilities provided by bundled libraries and retains system dependencies",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
-		assert.equal(result.status, 0, result.stderr);
-		const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
-		assert.equal(typeof macros.__requires_exclude, "string");
-		const excluded = new RegExp(macros.__requires_exclude.replaceAll("\\\\", "\\"));
-		for (const capability of readFileSync(f.env.TEST_LIBRARY_CAPABILITIES, "utf8").trim().split("\n")) {
-			assert.equal(excluded.test(capability), true, capability);
-		}
-		for (const capability of [
-			"libc.so.6()(64bit)",
-			"libc.so.6(GLIBC_2.38)(64bit)",
-			"libgtk-3.so.0()(64bit)",
-			"libwebkit2gtk-4.1.so.0()(64bit)",
-			"libasar.so()(32bit)",
-			"libasar.so(NOT_BUNDLED)(64bit)",
-			"libasarXso()(64bit)",
-			"libspecialllll.so.1()(64bit)",
-		]) {
-			assert.equal(excluded.test(capability), false, capability);
-		}
-		const scanned = readFileSync(f.env.TEST_RPMDEPS_LOG, "utf8");
-		assert.ok(scanned.startsWith("--provides\n"));
-		assert.ok(scanned.includes("/lib/thinkrail/bin/libasar.so\n"));
-		assert.ok(scanned.includes("/lib/thinkrail/bin/libspecial++.so.1\n"));
-		assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
-	},
-);
+test("filters precisely the capabilities provided by bundled libraries and retains system dependencies", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
+	assert.equal(result.status, 0, result.stderr);
+	const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
+	assert.equal(typeof macros.__requires_exclude, "string");
+	const excluded = new RegExp(macros.__requires_exclude.replaceAll("\\\\", "\\"));
+	for (const capability of readFileSync(f.env.TEST_LIBRARY_CAPABILITIES, "utf8")
+		.trim()
+		.split("\n")) {
+		assert.equal(excluded.test(capability), true, capability);
+	}
+	for (const capability of [
+		"libc.so.6()(64bit)",
+		"libc.so.6(GLIBC_2.38)(64bit)",
+		"libgtk-3.so.0()(64bit)",
+		"libwebkit2gtk-4.1.so.0()(64bit)",
+		"libasar.so()(32bit)",
+		"libasar.so(NOT_BUNDLED)(64bit)",
+		"libasarXso()(64bit)",
+		"libspecialllll.so.1()(64bit)",
+	]) {
+		assert.equal(excluded.test(capability), false, capability);
+	}
+	const scanned = readFileSync(f.env.TEST_RPMDEPS_LOG, "utf8");
+	assert.ok(scanned.startsWith("--provides\n"));
+	assert.ok(scanned.includes("/lib/thinkrail/bin/libasar.so\n"));
+	assert.ok(scanned.includes("/lib/thinkrail/bin/libspecial++.so.1\n"));
+	assertPayload(f, join(f.env.TEST_RPMDIR, "payload/lib/thinkrail"));
+});
 
-test(
-	"uses a nonmatching filter when no private libraries are bundled",
-	{ skip: process.platform !== "linux" },
-	() => {
-		const f = fixture("dev");
-		for (const name of ["libasar.so", "libNativeWrapper.so", "libspecial++.so.1"]) {
-			rmSync(join(f.bundle, "bin", name));
-		}
-		const result = run(f, "rpm", "--version=1.2.3", "--env=dev", "--skip-build");
-		assert.equal(result.status, 0, result.stderr);
-		const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
-		assert.equal(macros.__requires_exclude, "^$");
-		assert.equal(existsSync(f.env.TEST_RPMDEPS_LOG), false);
-	},
-);
+test("uses a nonmatching filter when no private libraries are bundled", {
+	skip: process.platform !== "linux",
+}, () => {
+	const f = fixture("dev");
+	for (const name of ["libasar.so", "libNativeWrapper.so", "libspecial++.so.1"]) {
+		rmSync(join(f.bundle, "bin", name));
+	}
+	const result = run(f, "rpm", "--version=1.2.3", "--env=dev", "--skip-build");
+	assert.equal(result.status, 0, result.stderr);
+	const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
+	assert.equal(macros.__requires_exclude, "^$");
+	assert.equal(existsSync(f.env.TEST_RPMDEPS_LOG), false);
+});
 
-test(
-	"stops before packaging when private dependency inspection fails",
-	{ skip: archiveTestsUnavailable },
-	() => {
-		const f = fixture();
-		executable(join(f.env.TEST_RPM_CONFIG, "rpmdeps"), "#!/bin/sh\nexit 17\n");
-		const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
-		assert.equal(result.status, 17);
-		assert.equal(existsSync(f.env.TEST_RPM_MACROS), false);
-		assert.deepEqual(readdirSync(join(f.desktop, "build")), []);
-	},
-);
+test("stops before packaging when private dependency inspection fails", {
+	skip: archiveTestsUnavailable,
+}, () => {
+	const f = fixture();
+	executable(join(f.env.TEST_RPM_CONFIG, "rpmdeps"), "#!/bin/sh\nexit 17\n");
+	const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
+	assert.equal(result.status, 17);
+	assert.equal(existsSync(f.env.TEST_RPM_MACROS), false);
+	assert.deepEqual(readdirSync(join(f.desktop, "build")), []);
+});
 
-test(
-	"preserves exact capability matching through the real RPM macro parser",
-	{ skip: rpmMacrosUnavailable },
-	() => {
-		const f = fixture();
-		const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
-		assert.equal(result.status, 0, result.stderr);
-		const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
-		const evaluated = spawnSync(
-			"rpm",
-			["--define", `__requires_exclude ${macros.__requires_exclude}`, "--eval", "%{__requires_exclude}"],
-			{ encoding: "utf8" },
-		);
-		assert.equal(evaluated.status, 0, evaluated.stderr);
-		const excluded = new RegExp(evaluated.stdout.trim());
-		assert.equal(excluded.test("libasar.so()(64bit)"), true);
-		assert.equal(excluded.test("libasar.so(ASAR_1.0)(64bit)"), true);
-		assert.equal(excluded.test("libspecial++.so.1()(64bit)"), true);
-		assert.equal(excluded.test("libasarXso()(64bit)"), false);
-		assert.equal(excluded.test("libc.so.6(GLIBC_2.38)(64bit)"), false);
-	},
-);
+test("preserves exact capability matching through the real RPM macro parser", {
+	skip: rpmMacrosUnavailable,
+}, () => {
+	const f = fixture();
+	const result = run(f, "rpm", "--version=1.2.3", "--skip-build");
+	assert.equal(result.status, 0, result.stderr);
+	const macros = JSON.parse(readFileSync(f.env.TEST_RPM_MACROS, "utf8"));
+	const evaluated = spawnSync(
+		"rpm",
+		[
+			"--define",
+			`__requires_exclude ${macros.__requires_exclude}`,
+			"--eval",
+			"%{__requires_exclude}",
+		],
+		{ encoding: "utf8" },
+	);
+	assert.equal(evaluated.status, 0, evaluated.stderr);
+	const excluded = new RegExp(evaluated.stdout.trim());
+	assert.equal(excluded.test("libasar.so()(64bit)"), true);
+	assert.equal(excluded.test("libasar.so(ASAR_1.0)(64bit)"), true);
+	assert.equal(excluded.test("libspecial++.so.1()(64bit)"), true);
+	assert.equal(excluded.test("libasarXso()(64bit)"), false);
+	assert.equal(excluded.test("libc.so.6(GLIBC_2.38)(64bit)"), false);
+});

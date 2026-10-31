@@ -82,15 +82,15 @@ if [[ $format != rpm ]]; then appimagetool=$(command -v "$appimagetool"); fi
 required_bun=$(bun -e 'console.log(require(process.argv[1]).packageManager.replace(/^bun@/, ""))' "$repo_root/package.json")
 installed_bun=$(bun --version)
 [[ $installed_bun == "$required_bun" ]] || fail "Bun $required_bun is required; found $installed_bun"
-version=$(bun -e '
+version=$(THINKRAIL_LINUX_PACKAGE_VERSION="$version" bun -e '
 const current = require(process.argv[1]);
-const version = process.argv[2] || current.version;
+const version = process.env.THINKRAIL_LINUX_PACKAGE_VERSION || current.version;
 const semver = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 if (typeof version !== "string" || semver.exec(version)?.[0] !== version) {
   throw new Error("version must be a SemVer version in version.ts or --version, e.g. 1.2.3");
 }
 console.log(version);
-' -- "$version_file" "$version")
+' "$version_file")
 rpm_release=${RPM_RELEASE:-1}
 if [[ $format != appimage ]]; then
 	[[ $rpm_release =~ ^[1-9][0-9]*$ ]] || fail "RPM_RELEASE must be a positive integer"
